@@ -1,0 +1,328 @@
+set z, [screen]
+    
+; print welcome message and wait for user to begin
+:print_welcome
+set [location], 0
+set z, [screen]
+add [location], 32
+set x, 4
+set y, 96
+add z, [location]
+add z, x
+add z, y
+set i, welcome_msg
+    
+:welcome_loop
+set b, [i]
+bor b, 0x7000
+set [z], b
+add z, 1
+add i, 1
+ifn [i], 0x0000
+    set pc, welcome_loop
+
+:user_begin
+set a, 1
+hwi 1
+    
+ifn c, 0x0083
+    set pc, user_begin
+
+; clear the screen
+set [location], 0
+set z, [screen]
+set j, 0
+
+:clear_outer1
+set i, 0
+set z, [screen] 
+add [location], 32
+add z, [location] 
+add j, 1
+ifa j, 12
+    set pc, start_game
+:clear_inner1
+set [z], 0x0020
+add z, 1
+add i, 1
+ifu i, 32
+    set pc, clear_inner1
+set pc, clear_outer1
+
+:start_game
+set a, 0
+set b, 9
+hwi 0x0002
+
+:gameLoop 
+set a, 1
+hwi 0x0002
+ife c, [last_tick]
+    set pc, gameLoop
+set [last_tick], c
+
+;clear the square
+set [location], 0
+set j, 0
+:outerLoop1
+    set i, 0
+    set z, [screen] 
+    add [location], 32
+    add z, [location]
+    add z, [start_x]
+    add z, [start_y]
+	add j, 1
+	ifa j, 8
+	set pc, endLoop1
+   	:innerLoop1 
+    	set [z], 0x0020
+    	add z, 1
+    	add i, 1
+    	ifu i, 8
+			set pc, innerLoop1
+    	set pc, outerLoop1
+:endLoop1
+
+
+;move the square and keep track of the last column
+add [start_x], [square_x_v]
+add [last_x],  [square_x_v]
+
+; square bounds check
+ifa [last_x], 31
+    set [start_x], 23
+ife [last_x], 32
+	mul [square_x_v], -1
+
+ifu [start_x], 0
+	set [start_x], 0
+ife [start_x], 0
+	mul [square_x_v], -1
+
+
+; Draw the square 
+set [location], 0
+set j, 0
+:outerLoop
+    set i, 0
+    set z, [screen] 
+    add [location], 32
+	add z, [location]
+	add z, [start_x]
+	add z, [start_y]
+	add j, 1
+	ifa j, 8
+	set pc, endLoop
+   	:innerLoop 
+   		set b, [screen_char]
+    	bor b, 0x7000
+    	set [z], b
+    	add z, 1
+    	add i, 1
+    	ifu i, 8
+			set pc, innerLoop
+    	set pc, outerLoop
+:endLoop
+
+; create the "finish line" character
+set z, [screen] 
+set [location], 368
+add z, [location]
+set b, [finish_char]
+bor b, 0x7000
+set [z], b
+
+
+
+
+:player_start
+; erase player's last movement from screen
+set z, [previous_y]
+mul z, 32
+add z, [previous_x]
+add z, [screen]
+set b, 0x0020
+bor b, 0x7000
+set [z], b
+
+; print the player's current position
+set z, [player_y]
+mul z, 32
+add z, [player_x]
+add z, [screen]
+set b, [player_char] 
+bor b, 0x7000
+set [z], b
+	
+set [previous_x], [player_x]
+set [previous_y], [player_y]
+	
+set a, 1
+hwi 1
+    
+
+	
+; move in all 4 directions
+ife c, 0x0080
+	sub [player_y], 1
+ife c, 0x0081
+	add [player_y], 1
+ife c, 0x0082
+	sub [player_x], 1
+ife c, 0x0083
+	add [player_x], 1
+
+; screen bounds check
+ifa [player_x], 31
+    set [player_x], 31
+ife [player_x], 32
+    set [player_x], 31
+ifu [player_x], 0
+    set [player_x], 0
+ife [player_x], 0
+    set [player_x], 0
+
+ifa [player_y], 11
+    set [player_y], 11
+ife [player_y], 11
+    set [player_y], 11
+ifu [player_y], 0
+    set [player_y], 0
+ife [player_y], 0
+    set [player_y], 0
+    
+; collision detection
+ife [player_x], [start_x]
+    set pc, check_rows
+
+
+set b, [last_x]
+sub b, 1
+
+ifa [player_x], [start_x]
+    ifl [player_x], b
+        set pc, check_rows
+
+ife [player_x], b
+    set pc, check_rows
+    
+; check to see if we are at the finish character
+ife [player_y], 11
+    ife [player_x], 16
+        set pc, end_game
+
+set pc, gameLoop
+    
+:check_rows
+ife [player_y], 2
+    set [player_y], 0
+ife [player_y], 3
+    set [player_y], 0
+ife [player_y], 4
+    set [player_y], 0
+ife [player_y], 5
+    set [player_y], 0
+ife [player_y], 6
+    set [player_y], 0
+ife [player_y], 7
+    set [player_y], 0
+ife [player_y], 8
+    set [player_y], 0
+ife [player_y], 9
+    set [player_y], 0
+    
+set pc, gameLoop
+
+;clear the screen and print the goodbye message
+:end_game
+set [location], 0
+set z, [screen]
+set j, 0
+
+:clear_outer
+set i, 0
+set z, [screen] 
+add [location], 32
+add z, [location] 
+add j, 1
+ifa j, 12
+    set pc, print_goodbye
+:clear_inner
+set [z], 0x0020
+add z, 1
+add i, 1
+ifu i, 32
+    set pc, clear_inner
+set pc, clear_outer
+
+:print_goodbye
+set [location], 0
+set z, [screen]
+add [location], 32
+set x, 5
+set y, 96
+add z, [location]
+add z, x
+add z, y
+set i, goodbye_msg
+    
+:message_loop
+set b, [i]
+bor b, 0x7000
+set [z], b
+add z, 1
+add i, 1
+ifn [i], 0x0000
+    set pc, message_loop
+:end
+    set pc, end
+
+:goodbye_msg
+dat "Congratulations! You Win", 0x0000
+
+:welcome_msg
+dat "Welcome! Use the arrow keys         to reach the U!               Press -> to begin", 0x0000
+
+
+:screen_char
+dat "* "
+
+:start_x
+dat 12
+
+:start_y
+dat 32
+
+:last_x
+dat 19
+
+:player_x
+dat 16
+
+:player_y
+dat 0
+
+:previous_x
+dat 0
+
+:previous_y 
+dat 0
+
+:square_x_v
+dat 1
+
+:player_char
+dat 0x0069
+
+:finish_char
+dat "U"
+
+
+:last_tick
+dat 0x0000
+
+:location
+dat 0x0000
+
+:screen
+dat 0x8000
