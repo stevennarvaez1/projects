@@ -71,7 +71,7 @@ set j, 0
     add z, [location]
     add z, [start_x]
     add z, [start_y]
-	add j, 1
+    add j, 1
 	ifa j, 8
 	set pc, endLoop1
    	:innerLoop1 
@@ -192,14 +192,16 @@ ife [player_y], 0
     set [player_y], 0
     
 ; collision detection
-ife [player_x], [start_x]
+set z, [start_x]
+sub z, 1
+ife [player_x], z
     set pc, check_rows
 
 
 set b, [last_x]
 sub b, 1
 
-ifa [player_x], [start_x]
+ifa [player_x], z
     ifl [player_x], b
         set pc, check_rows
 
@@ -292,6 +294,9 @@ dat 12
 
 :start_y
 dat 32
+
+:first_x
+dat 0
 
 :last_x
 dat 19
